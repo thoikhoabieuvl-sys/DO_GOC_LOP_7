@@ -2,7 +2,7 @@
 <html lang="vi">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Thực Hành Đo Góc - Full Screen</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
@@ -16,7 +16,6 @@
             overflow: hidden; 
             font-family: 'Nunito', sans-serif;
             background-color: #f0fdf4; 
-            touch-action: none; 
         }
         
         .app-container {
@@ -44,6 +43,8 @@
             box-shadow: inset 0 2px 4px rgba(0,0,0,0.06);
             border: 2px solid #cbd5e1;
             cursor: grab; 
+            /* Chỉ chặn cuộn trang (scroll) khi người dùng chạm vào khu vực vẽ */
+            touch-action: none; 
         }
 
         .workspace-container:active {
@@ -155,6 +156,7 @@
             flex-direction: column;
             justify-content: space-between;
             overflow-y: auto; 
+            touch-action: pan-y; /* Cho phép cuộn trên điện thoại */
         }
         
         .side-panel::-webkit-scrollbar { display: none; }
@@ -172,7 +174,7 @@
     <div class="app-container">
         <header class="text-center mb-3 shrink-0 flex items-center justify-center gap-4">
             <h1 class="text-2xl md:text-3xl font-extrabold text-green-700">📐 Thực Hành Đo Góc</h1>
-            <p class="text-gray-600 hidden md:block">| Kéo thả bản nền để xem các góc bị khuất khi phóng to nhé!</p>
+            <p class="text-gray-600 hidden md:block">| Kéo thả bản nền để di chuyển, dùng 2 ngón tay để Zoom (Phóng to) nhé!</p>
         </header>
 
         <div class="main-content">
@@ -188,7 +190,7 @@
 
                 <div class="absolute bottom-4 left-4 z-40 bg-white/80 px-3 py-1.5 rounded-full shadow-sm border border-gray-200 text-xs font-bold text-gray-500 pointer-events-none flex items-center gap-2">
                     <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 11.5V14m0-2.5v-6a1.5 1.5 0 113 0m-3 6a1.5 1.5 0 00-3 0v2a7.5 7.5 0 0015 0v-5a1.5 1.5 0 00-3 0m-6-3V11m0-5.5v-1a1.5 1.5 0 013 0v1m0 0V11m0-5.5a1.5 1.5 0 013 0v3m0 0V11"></path></svg>
-                    Giữ chuột vào nền lưới để di chuyển bản vẽ
+                    Giữ lưới để kéo - Dùng 2 ngón tay để Zoom
                 </div>
 
                 <div class="absolute bottom-2 right-2 opacity-50 hover:opacity-100 transition-opacity z-50 bg-white/80 px-2 py-1 rounded shadow-sm">
@@ -205,6 +207,8 @@
                     <svg id="angle-layer"></svg>
 
                     <div id="protractor-wrapper" style="left: 50px; top: 50px; transform: rotate(0deg);">
+                        <div id="protractor-center-point" style="position: absolute; left: 250px; top: 250px; width: 0px; height: 0px; pointer-events: none;"></div>
+                        
                         <div class="rotate-handle" id="rotate-handle">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
                             Xoay Thước
@@ -264,6 +268,9 @@
     </div>
 
     <script>
+        // ==========================================
+        // 0. HỆ THỐNG THU PHÓNG VÀ PAN
+        // ==========================================
         let currentZoom = 1;
         let panX = 0, panY = 0; 
         let isPanningCanvas = false;
@@ -296,29 +303,9 @@
             else setZoom(currentZoom - 0.1);
         }, { passive: false });
 
-        workspace.addEventListener('mousedown', (e) => {
-            if (e.target.closest('#protractor-wrapper') || e.target.closest('.rotate-handle') || e.target.closest('button') || e.target.closest('select')) return;
-            isPanningCanvas = true;
-            startPanMouseX = e.clientX - panX; 
-            startPanMouseY = e.clientY - panY;
-        });
-
-        window.addEventListener('mousemove', (e) => {
-            if (isPanningCanvas) {
-                panX = e.clientX - startPanMouseX;
-                panY = e.clientY - startPanMouseY;
-                canvasWrapper.style.transition = 'none'; 
-                updateCanvasTransform();
-            }
-        });
-
-        window.addEventListener('mouseup', () => {
-            if (isPanningCanvas) {
-                isPanningCanvas = false;
-                canvasWrapper.style.transition = 'transform 0.1s ease-out'; 
-            }
-        });
-
+        // ==========================================
+        // 1. TẠO THƯỚC ĐO GÓC SVG SIÊU CHUẨN XÁC
+        // ==========================================
         function buildProtractor() {
             let svg = `<svg viewBox="-250 -250 500 280" preserveAspectRatio="xMidYMid meet">`;
             
@@ -361,6 +348,9 @@
             document.getElementById('protractor-svg-container').innerHTML = svg;
         }
 
+        // ==========================================
+        // 2. LOGIC VẼ GÓC TOÁN HỌC KHÔNG SAI SỐ
+        // ==========================================
         let currentAngleDeg = 0;
         let currentVertex = { x: 0, y: 0 };
         let baseLineAngle = 0;
@@ -368,7 +358,6 @@
         function generateRandomAngle(mode = 'chan') {
             const svgLayer = document.getElementById('angle-layer');
             
-            // Tọa độ đỉnh là số nguyên để tránh sai số Pixel-Perfect
             currentVertex.x = Math.floor(workspace.clientWidth / 2 + (Math.random() * 80 - 40));
             currentVertex.y = Math.floor(workspace.clientHeight / 2 + (Math.random() * 60 - 30));
             
@@ -406,6 +395,7 @@
             let arcEndY = currentVertex.y + arcRadius * Math.sin(angle2 * Math.PI / 180);
             let largeArcFlag = currentAngleDeg > 180 ? 1 : 0; 
 
+            // CẬP NHẬT: Tia mỏng lại 2.5 và đổi màu Đỏ (#ef4444)
             svgLayer.innerHTML = `
                 <path d="M ${arcStartX} ${arcStartY} A ${arcRadius} ${arcRadius} 0 ${largeArcFlag} 0 ${arcEndX} ${arcEndY}" fill="rgba(234, 179, 8, 0.3)" stroke="#ca8a04" stroke-width="2" shape-rendering="geometricPrecision" />
                 <line x1="${currentVertex.x}" y1="${currentVertex.y}" x2="${end1X}" y2="${end1Y}" stroke="#ef4444" stroke-width="2.5" stroke-linecap="round" shape-rendering="geometricPrecision" />
@@ -422,17 +412,18 @@
         }
 
         // ==========================================
-        // 3. LOGIC KÉO THẢ & HÚT
+        // 3. LÕI EVENT MỚI: TÍCH HỢP CHUẨN CẢ CHUỘT & CẢM ỨNG
         // ==========================================
         const protractor = document.getElementById('protractor-wrapper');
         const rotateHandle = document.getElementById('rotate-handle');
         
-        let isDragging = false;
-        let isRotating = false;
+        let isDragging = false, isRotating = false;
         let startMouseX, startMouseY;
-        let startLeft, startTop, startRot;
-        let currentRot = 0; 
+        let startLeft, startTop, startRot, currentRot = 0; 
         let rotCenterX, rotCenterY;
+
+        let initialPinchDist = null;
+        let initialPinchZoom = 1;
 
         function getAngleDiff(a, b) {
             let diff = (a - b) % 360;
@@ -450,80 +441,78 @@
             setTimeout(() => { protractor.classList.remove('auto-move'); }, 600);
         });
 
-        protractor.addEventListener('mousedown', (e) => {
-            if(e.target === rotateHandle || rotateHandle.contains(e.target)) return;
+        // CÁC HÀM XỬ LÝ CHUNG CHO CẢ MOUSE VÀ TOUCH
+        function handleDragStart(x, y) {
             protractor.classList.remove('auto-move');
             isDragging = true;
-            startMouseX = e.clientX;
-            startMouseY = e.clientY;
+            startMouseX = x;
+            startMouseY = y;
             startLeft = parseFloat(protractor.style.left) || 0;
             startTop = parseFloat(protractor.style.top) || 0;
-        });
+        }
 
-        rotateHandle.addEventListener('mousedown', (e) => {
-            e.stopPropagation();
+        function handleRotateStart(x, y) {
             protractor.classList.remove('auto-move');
             isRotating = true;
-            
-            // Tính toán tâm xoay chuẩn xác dựa vào toạ độ DOM và Zoom
-            let cwRect = canvasWrapper.getBoundingClientRect();
-            let currentLeft = parseFloat(protractor.style.left) || 0;
-            let currentTop = parseFloat(protractor.style.top) || 0;
-            rotCenterX = cwRect.left + (currentLeft + 250) * currentZoom;
-            rotCenterY = cwRect.top + (currentTop + 250) * currentZoom;
-
+            let centerRect = document.getElementById('protractor-center-point').getBoundingClientRect();
+            rotCenterX = centerRect.left;
+            rotCenterY = centerRect.top;
             startMouseX = rotCenterX;
             startMouseY = rotCenterY;
-            
-            let dx = e.clientX - rotCenterX;
-            let dy = e.clientY - rotCenterY;
+            let dx = x - rotCenterX;
+            let dy = y - rotCenterY;
             startRot = Math.atan2(dy, dx) * 180 / Math.PI - currentRot;
-        });
+        }
 
-        window.addEventListener('mousemove', (e) => {
+        function handlePanStart(x, y) {
+            isPanningCanvas = true;
+            startPanMouseX = x - panX; 
+            startPanMouseY = y - panY;
+        }
+
+        function handleMove(x, y) {
             if (isDragging) {
-                let dx = (e.clientX - startMouseX) / currentZoom;
-                let dy = (e.clientY - startMouseY) / currentZoom;
-                
+                let dx = (x - startMouseX) / currentZoom;
+                let dy = (y - startMouseY) / currentZoom;
                 let newLeft = startLeft + dx;
                 let newTop = startTop + dy;
-                
                 let protractorCenterX = newLeft + 250; 
                 let protractorCenterY = newTop + 250;
                 let dist = Math.sqrt(Math.pow(protractorCenterX - currentVertex.x, 2) + Math.pow(protractorCenterY - currentVertex.y, 2));
-                
                 if (dist < 40) { 
                     newLeft = currentVertex.x - 250;
                     newTop = currentVertex.y - 250;
                 }
-
                 protractor.style.left = newLeft + 'px';
                 protractor.style.top = newTop + 'px';
             } 
             else if (isRotating) {
-                let dx = e.clientX - rotCenterX;
-                let dy = e.clientY - rotCenterY;
+                let dx = x - rotCenterX;
+                let dy = y - rotCenterY;
                 let angle = Math.atan2(dy, dx) * 180 / Math.PI;
                 let rawRot = angle - startRot;
 
-                // VÁ LỖI TẠI ĐÂY: Khai báo lại angle2 để tính toán độ hút chính xác
                 let angle2 = baseLineAngle - currentAngleDeg;
                 let snapRot = rawRot;
                 let targetAngles = [baseLineAngle, baseLineAngle + 180, angle2, angle2 + 180];
-
                 for (let target of targetAngles) {
                     if (getAngleDiff(rawRot, target) < 5) {
                         snapRot = target;
                         break;
                     }
                 }
-
                 currentRot = snapRot;
                 protractor.style.transform = `rotate(${currentRot}deg)`;
             }
-        });
+            else if (isPanningCanvas) {
+                panX = x - startPanMouseX;
+                panY = y - startPanMouseY;
+                canvasWrapper.style.transition = 'none'; 
+                updateCanvasTransform();
+            }
+        }
 
-        window.addEventListener('mouseup', () => {
+        function handleEnd() {
             if(isDragging || isRotating) {
                 protractor.classList.remove('snap-effect');
                 void protractor.offsetWidth; 
@@ -531,40 +520,80 @@
             }
             isDragging = false;
             isRotating = false;
-        });
-
-        // Touch Events
-        workspace.addEventListener('touchstart', e => {
-            if (e.target.closest('#protractor-wrapper') || e.target.closest('button') || e.target.closest('select')) return;
-            isPanningCanvas = true;
-            startPanMouseX = e.touches[0].clientX - panX; 
-            startPanMouseY = e.touches[0].clientY - panY;
-        }, {passive: false});
-
-        window.addEventListener('touchmove', e => {
-            if(isDragging || isRotating) e.preventDefault();
-            if (isPanningCanvas) {
-                e.preventDefault();
-                panX = e.touches[0].clientX - startPanMouseX;
-                panY = e.touches[0].clientY - startPanMouseY;
-                canvasWrapper.style.transition = 'none'; 
-                updateCanvasTransform();
-            }
-        }, {passive: false});
-
-        window.addEventListener('touchend', e => {
             if (isPanningCanvas) {
                 isPanningCanvas = false;
                 canvasWrapper.style.transition = 'transform 0.1s ease-out'; 
             }
+        }
+
+        // KẾT NỐI SỰ KIỆN CHUỘT (DESKTOP)
+        protractor.addEventListener('mousedown', e => {
+            if(e.target === rotateHandle || rotateHandle.contains(e.target)) return;
+            handleDragStart(e.clientX, e.clientY);
         });
+        rotateHandle.addEventListener('mousedown', e => {
+            e.stopPropagation();
+            handleRotateStart(e.clientX, e.clientY);
+        });
+        workspace.addEventListener('mousedown', e => {
+            if (e.target.closest('#protractor-wrapper') || e.target.closest('button') || e.target.closest('select') || e.target.closest('input')) return;
+            handlePanStart(e.clientX, e.clientY);
+        });
+        window.addEventListener('mousemove', e => handleMove(e.clientX, e.clientY));
+        window.addEventListener('mouseup', handleEnd);
+
+        // KẾT NỐI SỰ KIỆN CẢM ỨNG (MOBILE/IPAD) MƯỢT MÀ
+        workspace.addEventListener('touchstart', e => {
+            if (e.target.closest('button') || e.target.closest('select') || e.target.closest('input')) return;
+            
+            // Xử lý Pinch Zoom 2 ngón tay
+            if (e.touches.length === 2) {
+                isPanningCanvas = false;
+                initialPinchDist = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
+                initialPinchZoom = currentZoom;
+                if(e.cancelable) e.preventDefault();
+            } 
+            // Pan bản vẽ 1 ngón
+            else if (e.touches.length === 1 && !e.target.closest('#protractor-wrapper')) {
+                handlePanStart(e.touches[0].clientX, e.touches[0].clientY);
+            }
+        }, {passive: false});
 
         protractor.addEventListener('touchstart', e => {
+            if (e.touches.length > 1) return; // Nếu chạm nhiều ngón thì bỏ qua
+            if(e.cancelable) e.preventDefault(); // Tránh bị cuộn màn hình khi đang giữ thước
+            
             let touch = e.touches[0];
-            let mouseEvent = new MouseEvent("mousedown", { clientX: touch.clientX, clientY: touch.clientY });
-            if(e.target === rotateHandle || rotateHandle.contains(e.target)) rotateHandle.dispatchEvent(mouseEvent);
-            else protractor.dispatchEvent(mouseEvent);
+            if(e.target === rotateHandle || rotateHandle.contains(e.target)) {
+                handleRotateStart(touch.clientX, touch.clientY);
+            } else {
+                handleDragStart(touch.clientX, touch.clientY);
+            }
         }, {passive: false});
+
+        window.addEventListener('touchmove', e => {
+            // Cập nhật Pinch Zoom
+            if (e.touches.length === 2) {
+                if(e.cancelable) e.preventDefault();
+                if (initialPinchDist) {
+                    let dist = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
+                    setZoom(initialPinchZoom * (dist / initialPinchDist));
+                }
+                return;
+            }
+            
+            // Xử lý kéo/xoay/pan chung
+            if (isDragging || isRotating || isPanningCanvas) {
+                if(e.cancelable) e.preventDefault();
+                handleMove(e.touches[0].clientX, e.touches[0].clientY);
+            }
+        }, {passive: false});
+
+        window.addEventListener('touchend', e => {
+            initialPinchDist = null;
+            if (e.touches.length === 0) handleEnd();
+        });
+
 
         // ==========================================
         // 4. KIỂM TRA ĐÁP ÁN 
