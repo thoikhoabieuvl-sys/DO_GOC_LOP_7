@@ -3,28 +3,63 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Thực Hành Đo Góc</title>
+    <title>Thực Hành Đo Góc - Full Screen</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap');
-        body {
+        
+        html, body {
+            margin: 0;
+            padding: 0;
+            width: 100vw;
+            height: 100vh;
+            overflow: hidden; 
             font-family: 'Nunito', sans-serif;
             background-color: #f0fdf4; 
             touch-action: none; 
         }
         
-        .workspace {
-            position: relative;
+        .app-container {
+            display: flex;
+            flex-direction: column;
             width: 100%;
-            /* Tăng chiều cao lên 650px để khu vực vẽ góc rộng rãi hơn */
-            height: 650px;
-            background-color: #ffffff;
-            background-image: radial-gradient(#e5e7eb 1px, transparent 1px);
-            background-size: 20px 20px; 
+            height: 100%;
+            padding: 10px;
+            box-sizing: border-box;
+        }
+
+        .main-content {
+            display: flex;
+            flex: 1;
+            gap: 15px;
+            min-height: 0; 
+        }
+
+        .workspace-container {
+            flex: 1; 
+            position: relative;
+            background-color: #f8fafc;
             border-radius: 12px;
             overflow: hidden;
             box-shadow: inset 0 2px 4px rgba(0,0,0,0.06);
-            border: 2px solid #d1d5db;
+            border: 2px solid #cbd5e1;
+            cursor: grab; 
+        }
+
+        .workspace-container:active {
+            cursor: grabbing;
+        }
+
+        #canvas-wrapper {
+            position: absolute;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background-color: #ffffff;
+            background-image: radial-gradient(#cbd5e1 1px, transparent 1px);
+            background-size: 25px 25px; 
+            transform-origin: 50% 50%;
+            transition: transform 0.1s ease-out; 
+            will-change: transform;
         }
 
         #angle-layer {
@@ -34,36 +69,52 @@
             z-index: 1;
         }
 
-        /* Thước đo góc */
         #protractor-wrapper {
             position: absolute;
             z-index: 10;
-            /* Đặt tâm xoay chính xác vào tâm của thước (210, 210) */
-            transform-origin: 210px 210px; 
+            transform-origin: 250px 250px; 
             cursor: grab;
             filter: drop-shadow(0 10px 15px rgba(0,0,0,0.2));
+            width: 500px;
+            height: 280px;
         }
 
-        /* Hiệu ứng bay mượt khi bấm Tự động đặt thước */
-        .auto-move {
-            transition: all 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+        #protractor-svg-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
         }
 
+        #protractor-svg-container svg {
+            display: block; 
+            width: 100%;
+            height: 100%;
+        }
+
+        #protractor-wrapper:hover {
+            cursor: grab;
+        }
         #protractor-wrapper:active {
             cursor: grabbing;
             filter: drop-shadow(0 5px 5px rgba(0,0,0,0.3));
         }
 
+        .auto-move {
+            transition: all 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+
         .rotate-handle {
             position: absolute;
-            top: -40px;
+            top: -45px;
             left: 50%;
             transform: translateX(-50%);
             background-color: #3b82f6;
             color: white;
-            padding: 6px 16px;
+            padding: 8px 18px;
             border-radius: 999px;
-            font-size: 14px;
+            font-size: 15px;
             font-weight: bold;
             cursor: ew-resize;
             box-shadow: 0 4px 6px rgba(59, 130, 246, 0.3);
@@ -83,9 +134,9 @@
         }
 
         @keyframes snapPulse {
-            0% { transform: scale(1); }
-            50% { transform: scale(1.05); filter: brightness(1.2); }
-            100% { transform: scale(1); }
+            0% { filter: drop-shadow(0 10px 15px rgba(0,0,0,0.2)); }
+            50% { filter: drop-shadow(0 0 20px #3b82f6) brightness(1.1); }
+            100% { filter: drop-shadow(0 10px 15px rgba(0,0,0,0.2)); }
         }
 
         .feedback-pop {
@@ -96,21 +147,51 @@
             from { opacity: 0; transform: translateY(20px) scale(0.9); }
             to { opacity: 1; transform: translateY(0) scale(1); }
         }
+
+        .side-panel {
+            width: 380px; 
+            flex-shrink: 0;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            overflow-y: auto; 
+        }
+        
+        .side-panel::-webkit-scrollbar { display: none; }
+        .side-panel { -ms-overflow-style: none; scrollbar-width: none; }
+        
+        @media (max-width: 1024px) {
+            .main-content { flex-direction: column; }
+            .side-panel { width: 100%; flex-shrink: 1; }
+            .workspace-container { flex: 2; min-height: 400px; }
+        }
     </style>
 </head>
-<body class="text-gray-800 p-4 md:p-8">
+<body>
 
-    <div class="max-w-7xl mx-auto">
-        <header class="text-center mb-6">
-            <h1 class="text-3xl md:text-4xl font-extrabold text-green-700 mb-2">📐 Thực Hành Đo Góc</h1>
-            <p class="text-lg text-gray-600">Kéo tâm thước vào đỉnh góc và xoay thước để một cạnh đi qua vạch 0 nhé!</p>
+    <div class="app-container">
+        <header class="text-center mb-3 shrink-0 flex items-center justify-center gap-4">
+            <h1 class="text-2xl md:text-3xl font-extrabold text-green-700">📐 Thực Hành Đo Góc</h1>
+            <p class="text-gray-600 hidden md:block">| Kéo thả bản nền để xem các góc bị khuất khi phóng to nhé!</p>
         </header>
 
-        <div class="flex flex-col lg:flex-row gap-6">
-            <!-- Khu vực thực hành -->
-            <div class="flex-[2] workspace relative" id="workspace">
-                <!-- Công cụ bí mật của Giáo viên: Đã làm rõ hơn ở góc dưới phải -->
-                <div class="absolute bottom-2 right-2 opacity-60 hover:opacity-100 transition-opacity z-50 bg-white/70 px-2 py-1 rounded shadow-sm">
+        <div class="main-content">
+            <div class="workspace-container" id="workspace">
+                
+                <div class="absolute top-4 left-4 z-50 flex flex-col gap-2 bg-white/95 p-2 rounded-lg shadow-md border border-gray-200 backdrop-blur-sm pointer-events-auto cursor-default">
+                    <span class="text-[10px] uppercase font-bold text-gray-500 text-center tracking-wider">Thu Phóng</span>
+                    <button id="btn-zoom-in" class="w-10 h-10 flex items-center justify-center bg-gray-100 hover:bg-blue-100 rounded text-gray-700 hover:text-blue-700 font-bold text-2xl transition">+</button>
+                    <span id="zoom-level-text" class="text-sm font-bold text-center text-blue-600">100%</span>
+                    <button id="btn-zoom-out" class="w-10 h-10 flex items-center justify-center bg-gray-100 hover:bg-blue-100 rounded text-gray-700 hover:text-blue-700 font-bold text-2xl transition">-</button>
+                    <button id="btn-zoom-reset" class="w-10 h-8 flex items-center justify-center bg-blue-100 hover:bg-blue-200 rounded text-blue-700 font-bold text-xs mt-1 transition">Reset</button>
+                </div>
+
+                <div class="absolute bottom-4 left-4 z-40 bg-white/80 px-3 py-1.5 rounded-full shadow-sm border border-gray-200 text-xs font-bold text-gray-500 pointer-events-none flex items-center gap-2">
+                    <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 11.5V14m0-2.5v-6a1.5 1.5 0 113 0m-3 6a1.5 1.5 0 00-3 0v2a7.5 7.5 0 0015 0v-5a1.5 1.5 0 00-3 0m-6-3V11m0-5.5v-1a1.5 1.5 0 013 0v1m0 0V11m0-5.5a1.5 1.5 0 013 0v3m0 0V11"></path></svg>
+                    Giữ chuột vào nền lưới để di chuyển bản vẽ
+                </div>
+
+                <div class="absolute bottom-2 right-2 opacity-50 hover:opacity-100 transition-opacity z-50 bg-white/80 px-2 py-1 rounded shadow-sm">
                     <select id="teacher-mode" class="bg-transparent text-xs font-mono text-gray-600 font-bold border-none outline-none cursor-pointer" title="Cài đặt góc (Chỉ GV)">
                         <option value="random">v1.0.0 (Ngẫu nhiên)</option>
                         <option value="nhon">v1.0.1 (Ép Góc Nhọn)</option>
@@ -120,21 +201,21 @@
                     </select>
                 </div>
 
-                <svg id="angle-layer"></svg>
+                <div id="canvas-wrapper">
+                    <svg id="angle-layer"></svg>
 
-                <div id="protractor-wrapper" style="left: 50px; top: 50px; width: 420px; height: 230px; transform: rotate(0deg);">
-                    <div class="rotate-handle" id="rotate-handle">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
-                        Xoay Thước
+                    <div id="protractor-wrapper" style="left: 50px; top: 50px; transform: rotate(0deg);">
+                        <div class="rotate-handle" id="rotate-handle">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+                            Xoay Thước
+                        </div>
+                        <div id="protractor-svg-container"></div>
                     </div>
-                    <div id="protractor-svg-container"></div>
                 </div>
             </div>
 
-            <!-- Bảng câu hỏi -->
-            <div class="flex-[1] bg-white p-6 rounded-xl border-2 border-gray-200 shadow-sm flex flex-col justify-between">
+            <div class="side-panel bg-white p-6 rounded-xl border-2 border-gray-200 shadow-sm">
                 <div>
-                    <!-- 2 Nút Tạo Góc: Chẵn và Lẻ -->
                     <div class="flex gap-2 mb-3">
                         <button id="btn-new-chan" class="flex-1 bg-blue-500 hover:bg-blue-600 text-white font-bold py-3 px-2 rounded-lg transition shadow-md text-sm flex items-center justify-center gap-1">
                             ✨ Góc Chẵn
@@ -144,7 +225,6 @@
                         </button>
                     </div>
                     
-                    <!-- Nút cứu trợ -->
                     <button id="btn-hint" class="w-full bg-yellow-400 hover:bg-yellow-500 text-yellow-900 font-bold py-2 px-4 rounded-lg mb-6 transition shadow-md flex items-center justify-center gap-2 text-sm border border-yellow-500">
                         💡 Tự động đặt thước giúp em
                     </button>
@@ -172,12 +252,11 @@
                 </div>
 
                 <div class="mt-8">
-                    <button id="btn-check" class="w-full bg-green-500 hover:bg-green-600 text-white font-bold py-3 px-4 rounded-lg transition shadow-md text-lg">
+                    <button id="btn-check" class="w-full bg-green-500 hover:bg-green-600 text-white font-bold py-4 px-4 rounded-lg transition shadow-md text-xl">
                         Kiểm Tra Kết Quả
                     </button>
 
                     <div id="feedback" class="mt-4 p-4 rounded-lg font-bold text-center hidden">
-                        <!-- Thông báo hiện ở đây -->
                     </div>
                 </div>
             </div>
@@ -185,101 +264,133 @@
     </div>
 
     <script>
-        // ==========================================
-        // 1. TẠO THƯỚC ĐO GÓC BẰNG SVG
-        // ==========================================
+        let currentZoom = 1;
+        let panX = 0, panY = 0; 
+        let isPanningCanvas = false;
+        let startPanMouseX, startPanMouseY;
+        
+        const canvasWrapper = document.getElementById('canvas-wrapper');
+        const zoomLevelText = document.getElementById('zoom-level-text');
+        const workspace = document.getElementById('workspace');
+
+        function updateCanvasTransform() {
+            canvasWrapper.style.transform = `translate(${panX}px, ${panY}px) scale(${currentZoom})`;
+        }
+
+        function setZoom(level) {
+            currentZoom = Math.max(0.5, Math.min(level, 4)); 
+            updateCanvasTransform();
+            zoomLevelText.innerText = Math.round(currentZoom * 100) + '%';
+        }
+
+        document.getElementById('btn-zoom-in').addEventListener('click', () => setZoom(currentZoom + 0.2));
+        document.getElementById('btn-zoom-out').addEventListener('click', () => setZoom(currentZoom - 0.2));
+        document.getElementById('btn-zoom-reset').addEventListener('click', () => {
+            panX = 0; panY = 0; 
+            setZoom(1);
+        });
+
+        workspace.addEventListener('wheel', (e) => {
+            e.preventDefault();
+            if (e.deltaY < 0) setZoom(currentZoom + 0.1);
+            else setZoom(currentZoom - 0.1);
+        }, { passive: false });
+
+        workspace.addEventListener('mousedown', (e) => {
+            if (e.target.closest('#protractor-wrapper') || e.target.closest('.rotate-handle') || e.target.closest('button') || e.target.closest('select')) return;
+            isPanningCanvas = true;
+            startPanMouseX = e.clientX - panX; 
+            startPanMouseY = e.clientY - panY;
+        });
+
+        window.addEventListener('mousemove', (e) => {
+            if (isPanningCanvas) {
+                panX = e.clientX - startPanMouseX;
+                panY = e.clientY - startPanMouseY;
+                canvasWrapper.style.transition = 'none'; 
+                updateCanvasTransform();
+            }
+        });
+
+        window.addEventListener('mouseup', () => {
+            if (isPanningCanvas) {
+                isPanningCanvas = false;
+                canvasWrapper.style.transition = 'transform 0.1s ease-out'; 
+            }
+        });
+
         function buildProtractor() {
-            let svg = `<svg viewBox="-210 -210 420 230" style="width: 100%; height: 100%; overflow: visible;">`;
+            let svg = `<svg viewBox="-250 -250 500 280" preserveAspectRatio="xMidYMid meet">`;
             
-            svg += `<path d="M -200 0 A 200 200 0 0 1 200 0 Z" fill="rgba(240, 249, 255, 0.85)" stroke="#0ea5e9" stroke-width="2" />`;
-            svg += `<path d="M -110 0 A 110 110 0 0 1 110 0 Z" fill="rgba(255, 255, 255, 0.4)" stroke="#0ea5e9" stroke-width="1" />`;
+            svg += `<path d="M -240 0 A 240 240 0 0 1 240 0 Z" fill="rgba(240, 249, 255, 0.85)" stroke="#0ea5e9" stroke-width="2" />`;
+            svg += `<path d="M -130 0 A 130 130 0 0 1 130 0 Z" fill="rgba(255, 255, 255, 0.4)" stroke="#0ea5e9" stroke-width="1" />`;
 
             for (let i = 0; i <= 180; i++) {
                 let theta = (180 - i) * Math.PI / 180;
                 let isMajor = i % 10 === 0;
                 let isMedium = i % 5 === 0 && !isMajor;
 
-                let outerR = 200;
-                let innerR = isMajor ? 180 : (isMedium ? 188 : 193);
+                let outerR = 240;
+                let innerR = isMajor ? 215 : (isMedium ? 225 : 232);
 
                 let x1 = outerR * Math.cos(theta);
                 let y1 = -outerR * Math.sin(theta);
                 let x2 = innerR * Math.cos(theta);
                 let y2 = -innerR * Math.sin(theta);
 
-                svg += `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="#334155" stroke-width="${isMajor ? 2 : 1}" />`;
+                svg += `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="#334155" stroke-width="${isMajor ? 2 : 1.2}" shape-rendering="geometricPrecision" />`;
 
                 if (isMajor) {
-                    let lx1 = 168 * Math.cos(theta);
-                    let ly1 = -168 * Math.sin(theta);
-                    svg += `<text x="${lx1}" y="${ly1}" fill="#ef4444" font-size="12" font-weight="900" text-anchor="middle" dominant-baseline="central" transform="rotate(${i - 90}, ${lx1}, ${ly1})">${i}</text>`;
+                    let lx1 = 200 * Math.cos(theta);
+                    let ly1 = -200 * Math.sin(theta);
+                    svg += `<text x="${lx1}" y="${ly1}" fill="#ef4444" font-size="15" font-weight="900" text-anchor="middle" dominant-baseline="central" transform="rotate(${i - 90}, ${lx1}, ${ly1})">${i}</text>`;
 
-                    let lx2 = 145 * Math.cos(theta);
-                    let ly2 = -145 * Math.sin(theta);
-                    svg += `<text x="${lx2}" y="${ly2}" fill="#0ea5e9" font-size="12" font-weight="900" text-anchor="middle" dominant-baseline="central" transform="rotate(${i - 90}, ${lx2}, ${ly2})">${180 - i}</text>`;
+                    let lx2 = 170 * Math.cos(theta);
+                    let ly2 = -170 * Math.sin(theta);
+                    svg += `<text x="${lx2}" y="${ly2}" fill="#0ea5e9" font-size="15" font-weight="900" text-anchor="middle" dominant-baseline="central" transform="rotate(${i - 90}, ${lx2}, ${ly2})">${180 - i}</text>`;
                 }
             }
 
-            svg += `<line x1="-200" y1="0" x2="200" y2="0" stroke="#0ea5e9" stroke-width="2" />`;
-            svg += `<line x1="-15" y1="0" x2="15" y2="0" stroke="#ef4444" stroke-width="2" />`;
-            svg += `<line x1="0" y1="-15" x2="0" y2="15" stroke="#ef4444" stroke-width="2" />`;
-            svg += `<circle cx="0" cy="0" r="5" fill="#ef4444" />`;
-            svg += `<circle cx="0" cy="0" r="2" fill="#fff" />`;
+            svg += `<line x1="-240" y1="0" x2="240" y2="0" stroke="#0ea5e9" stroke-width="2" shape-rendering="geometricPrecision" />`;
+            svg += `<line x1="-15" y1="0" x2="15" y2="0" stroke="#ef4444" stroke-width="2" shape-rendering="crispEdges" />`;
+            svg += `<line x1="0" y1="-15" x2="0" y2="15" stroke="#ef4444" stroke-width="2" shape-rendering="crispEdges" />`;
+            svg += `<circle cx="0" cy="0" r="4" fill="none" stroke="#ef4444" stroke-width="2" />`;
+            svg += `<circle cx="0" cy="0" r="1.5" fill="#1e293b" />`; 
 
             svg += `</svg>`;
             document.getElementById('protractor-svg-container').innerHTML = svg;
         }
 
-        // ==========================================
-        // 2. LOGIC VẼ GÓC THEO MODE (CHẴN / LẺ)
-        // ==========================================
         let currentAngleDeg = 0;
         let currentVertex = { x: 0, y: 0 };
         let baseLineAngle = 0;
 
         function generateRandomAngle(mode = 'chan') {
-            const workspace = document.getElementById('workspace');
             const svgLayer = document.getElementById('angle-layer');
             
-            // Đỉnh ngẫu nhiên
-            currentVertex.x = workspace.clientWidth / 2 + (Math.random() * 140 - 70);
-            currentVertex.y = workspace.clientHeight / 2 + (Math.random() * 100 - 50);
+            // Tọa độ đỉnh là số nguyên để tránh sai số Pixel-Perfect
+            currentVertex.x = Math.floor(workspace.clientWidth / 2 + (Math.random() * 80 - 40));
+            currentVertex.y = Math.floor(workspace.clientHeight / 2 + (Math.random() * 60 - 30));
             
-            // Xoay hình ngẫu nhiên
             baseLineAngle = Math.floor(Math.random() * 360);
-
-            // Đọc chế độ bí mật của Giáo viên
             const teacherMode = document.getElementById('teacher-mode').value;
 
-            // Sinh góc theo mode Giáo viên yêu cầu
             if (teacherMode === 'vuong') {
                 currentAngleDeg = 90;
             } else if (teacherMode === 'bet') {
                 currentAngleDeg = 180;
             } else if (teacherMode === 'nhon') {
-                if (mode === 'chan') {
-                    currentAngleDeg = Math.floor(Math.random() * 15 + 3) * 5; // 15 đến 85
-                } else {
-                    do { currentAngleDeg = Math.floor(Math.random() * 79) + 11; } while (currentAngleDeg % 5 === 0);
-                }
+                if (mode === 'chan') currentAngleDeg = Math.floor(Math.random() * 15 + 3) * 5; 
+                else do { currentAngleDeg = Math.floor(Math.random() * 79) + 11; } while (currentAngleDeg % 5 === 0);
             } else if (teacherMode === 'tu') {
-                if (mode === 'chan') {
-                    currentAngleDeg = Math.floor(Math.random() * 17 + 19) * 5; // 95 đến 175
-                } else {
-                    do { currentAngleDeg = Math.floor(Math.random() * 89) + 91; } while (currentAngleDeg % 5 === 0);
-                }
+                if (mode === 'chan') currentAngleDeg = Math.floor(Math.random() * 17 + 19) * 5; 
+                else do { currentAngleDeg = Math.floor(Math.random() * 89) + 91; } while (currentAngleDeg % 5 === 0);
             } else {
-                // Mặc định ngẫu nhiên (v1.0.0)
-                if (mode === 'chan') {
-                    currentAngleDeg = Math.floor(Math.random() * 33 + 3) * 5; 
-                } else {
-                    do {
-                        currentAngleDeg = Math.floor(Math.random() * 169) + 11;
-                    } while (currentAngleDeg % 5 === 0);
-                }
+                if (mode === 'chan') currentAngleDeg = Math.floor(Math.random() * 33 + 3) * 5; 
+                else do { currentAngleDeg = Math.floor(Math.random() * 169) + 11; } while (currentAngleDeg % 5 === 0);
             }
 
-            const length = 500; // Cạnh vẽ dài ra do màn hình đã lớn hơn
+            const length = 1500; 
             
             let end1X = currentVertex.x + length * Math.cos(baseLineAngle * Math.PI / 180);
             let end1Y = currentVertex.y + length * Math.sin(baseLineAngle * Math.PI / 180);
@@ -296,19 +407,22 @@
             let largeArcFlag = currentAngleDeg > 180 ? 1 : 0; 
 
             svgLayer.innerHTML = `
-                <path d="M ${arcStartX} ${arcStartY} A ${arcRadius} ${arcRadius} 0 ${largeArcFlag} 0 ${arcEndX} ${arcEndY}" fill="rgba(234, 179, 8, 0.3)" stroke="#ca8a04" stroke-width="2" />
-                <line x1="${currentVertex.x}" y1="${currentVertex.y}" x2="${end1X}" y2="${end1Y}" stroke="#1e293b" stroke-width="4" stroke-linecap="round" />
-                <line x1="${currentVertex.x}" y1="${currentVertex.y}" x2="${end2X}" y2="${end2Y}" stroke="#1e293b" stroke-width="4" stroke-linecap="round" />
-                <circle cx="${currentVertex.x}" cy="${currentVertex.y}" r="6" fill="#ef4444" stroke="#fff" stroke-width="2" />
+                <path d="M ${arcStartX} ${arcStartY} A ${arcRadius} ${arcRadius} 0 ${largeArcFlag} 0 ${arcEndX} ${arcEndY}" fill="rgba(234, 179, 8, 0.3)" stroke="#ca8a04" stroke-width="2" shape-rendering="geometricPrecision" />
+                <line x1="${currentVertex.x}" y1="${currentVertex.y}" x2="${end1X}" y2="${end1Y}" stroke="#ef4444" stroke-width="2.5" stroke-linecap="round" shape-rendering="geometricPrecision" />
+                <line x1="${currentVertex.x}" y1="${currentVertex.y}" x2="${end2X}" y2="${end2Y}" stroke="#ef4444" stroke-width="2.5" stroke-linecap="round" shape-rendering="geometricPrecision" />
+                <circle cx="${currentVertex.x}" cy="${currentVertex.y}" r="6" fill="#ef4444" stroke="#fff" stroke-width="2" shape-rendering="geometricPrecision" />
             `;
 
             document.getElementById('input-deg').value = '';
             document.getElementById('select-type').value = '';
             document.getElementById('feedback').className = 'hidden';
+            
+            panX = 0; panY = 0;
+            setZoom(1); 
         }
 
         // ==========================================
-        // 3. LOGIC KÉO THẢ, HÚT VÀ NÚT GỢI Ý
+        // 3. LOGIC KÉO THẢ & HÚT
         // ==========================================
         const protractor = document.getElementById('protractor-wrapper');
         const rotateHandle = document.getElementById('rotate-handle');
@@ -318,8 +432,8 @@
         let startMouseX, startMouseY;
         let startLeft, startTop, startRot;
         let currentRot = 0; 
+        let rotCenterX, rotCenterY;
 
-        // Tính khoảng cách giữa 2 góc xoay
         function getAngleDiff(a, b) {
             let diff = (a - b) % 360;
             while (diff <= -180) diff += 360;
@@ -327,22 +441,13 @@
             return Math.abs(diff);
         }
 
-        // --- Nút Tự động đặt thước ---
         document.getElementById('btn-hint').addEventListener('click', () => {
             protractor.classList.add('auto-move');
-            
-            // Di chuyển tâm thước vào đỉnh góc (Tâm thước cách viền trái và trên là 210px)
-            protractor.style.left = (currentVertex.x - 210) + 'px';
-            protractor.style.top = (currentVertex.y - 210) + 'px';
-            
-            // Xoay vạch 0 cho khớp với cạnh đáy
+            protractor.style.left = (currentVertex.x - 250) + 'px';
+            protractor.style.top = (currentVertex.y - 250) + 'px';
             currentRot = baseLineAngle;
             protractor.style.transform = `rotate(${currentRot}deg)`;
-
-            // Hết hiệu ứng bay thì bỏ class đi để có thể kéo thả bình thường
-            setTimeout(() => {
-                protractor.classList.remove('auto-move');
-            }, 600);
+            setTimeout(() => { protractor.classList.remove('auto-move'); }, 600);
         });
 
         protractor.addEventListener('mousedown', (e) => {
@@ -360,53 +465,58 @@
             protractor.classList.remove('auto-move');
             isRotating = true;
             
-            let rect = protractor.getBoundingClientRect();
-            let centerX = rect.left + rect.width / 2;
-            let centerY = rect.top + 210 * (rect.width / 420); 
+            // Tính toán tâm xoay chuẩn xác dựa vào toạ độ DOM và Zoom
+            let cwRect = canvasWrapper.getBoundingClientRect();
+            let currentLeft = parseFloat(protractor.style.left) || 0;
+            let currentTop = parseFloat(protractor.style.top) || 0;
+            rotCenterX = cwRect.left + (currentLeft + 250) * currentZoom;
+            rotCenterY = cwRect.top + (currentTop + 250) * currentZoom;
 
-            startMouseX = centerX;
-            startMouseY = centerY;
+            startMouseX = rotCenterX;
+            startMouseY = rotCenterY;
             
-            let dx = e.clientX - centerX;
-            let dy = e.clientY - centerY;
+            let dx = e.clientX - rotCenterX;
+            let dy = e.clientY - rotCenterY;
             startRot = Math.atan2(dy, dx) * 180 / Math.PI - currentRot;
         });
 
         window.addEventListener('mousemove', (e) => {
             if (isDragging) {
-                let dx = e.clientX - startMouseX;
-                let dy = e.clientY - startMouseY;
+                let dx = (e.clientX - startMouseX) / currentZoom;
+                let dy = (e.clientY - startMouseY) / currentZoom;
+                
                 let newLeft = startLeft + dx;
                 let newTop = startTop + dy;
                 
-                // HÚT VÀO ĐỈNH
-                let protractorCenterX = newLeft + 210; 
-                let protractorCenterY = newTop + 210;
-
+                let protractorCenterX = newLeft + 250; 
+                let protractorCenterY = newTop + 250;
                 let dist = Math.sqrt(Math.pow(protractorCenterX - currentVertex.x, 2) + Math.pow(protractorCenterY - currentVertex.y, 2));
                 
-                if (dist < 30) { // Bán kính hút 30px
-                    newLeft = currentVertex.x - 210;
-                    newTop = currentVertex.y - 210;
+                if (dist < 40) { 
+                    newLeft = currentVertex.x - 250;
+                    newTop = currentVertex.y - 250;
                 }
 
                 protractor.style.left = newLeft + 'px';
                 protractor.style.top = newTop + 'px';
             } 
             else if (isRotating) {
-                let dx = e.clientX - startMouseX;
-                let dy = e.clientY - startMouseY;
+                let dx = e.clientX - rotCenterX;
+                let dy = e.clientY - rotCenterY;
                 let angle = Math.atan2(dy, dx) * 180 / Math.PI;
                 let rawRot = angle - startRot;
 
-                // HÚT VÀO CẠNH GÓC
-                let snapRot = rawRot;
-                let diff1 = getAngleDiff(rawRot, baseLineAngle);
-                if (diff1 < 5) snapRot = baseLineAngle;
-                
+                // VÁ LỖI TẠI ĐÂY: Khai báo lại angle2 để tính toán độ hút chính xác
                 let angle2 = baseLineAngle - currentAngleDeg;
-                let diff2 = getAngleDiff(rawRot, angle2);
-                if (diff2 < 5) snapRot = angle2;
+                let snapRot = rawRot;
+                let targetAngles = [baseLineAngle, baseLineAngle + 180, angle2, angle2 + 180];
+
+                for (let target of targetAngles) {
+                    if (getAngleDiff(rawRot, target) < 5) {
+                        snapRot = target;
+                        break;
+                    }
+                }
 
                 currentRot = snapRot;
                 protractor.style.transform = `rotate(${currentRot}deg)`;
@@ -423,6 +533,32 @@
             isRotating = false;
         });
 
+        // Touch Events
+        workspace.addEventListener('touchstart', e => {
+            if (e.target.closest('#protractor-wrapper') || e.target.closest('button') || e.target.closest('select')) return;
+            isPanningCanvas = true;
+            startPanMouseX = e.touches[0].clientX - panX; 
+            startPanMouseY = e.touches[0].clientY - panY;
+        }, {passive: false});
+
+        window.addEventListener('touchmove', e => {
+            if(isDragging || isRotating) e.preventDefault();
+            if (isPanningCanvas) {
+                e.preventDefault();
+                panX = e.touches[0].clientX - startPanMouseX;
+                panY = e.touches[0].clientY - startPanMouseY;
+                canvasWrapper.style.transition = 'none'; 
+                updateCanvasTransform();
+            }
+        }, {passive: false});
+
+        window.addEventListener('touchend', e => {
+            if (isPanningCanvas) {
+                isPanningCanvas = false;
+                canvasWrapper.style.transition = 'transform 0.1s ease-out'; 
+            }
+        });
+
         protractor.addEventListener('touchstart', e => {
             let touch = e.touches[0];
             let mouseEvent = new MouseEvent("mousedown", { clientX: touch.clientX, clientY: touch.clientY });
@@ -430,20 +566,8 @@
             else protractor.dispatchEvent(mouseEvent);
         }, {passive: false});
 
-        window.addEventListener('touchmove', e => {
-            if(isDragging || isRotating) e.preventDefault();
-            let touch = e.touches[0];
-            let mouseEvent = new MouseEvent("mousemove", { clientX: touch.clientX, clientY: touch.clientY });
-            window.dispatchEvent(mouseEvent);
-        }, {passive: false});
-
-        window.addEventListener('touchend', e => {
-            let mouseEvent = new MouseEvent("mouseup", {});
-            window.dispatchEvent(mouseEvent);
-        });
-
         // ==========================================
-        // 4. KIỂM TRA ĐÁP ÁN
+        // 4. KIỂM TRA ĐÁP ÁN 
         // ==========================================
         document.getElementById('btn-new-chan').addEventListener('click', () => generateRandomAngle('chan'));
         document.getElementById('btn-new-le').addEventListener('click', () => generateRandomAngle('le'));
@@ -451,8 +575,7 @@
         document.getElementById('btn-check').addEventListener('click', () => {
             const userDegInput = document.getElementById('input-deg').value;
             const userType = document.getElementById('select-type').value;
-            const fbBox = document.getElementById('feedback');
-
+            
             if (userDegInput === '' || userType === '') {
                 showFeedback("Vui lòng điền đủ số đo và chọn loại góc nhé!", "warning");
                 return;
@@ -460,28 +583,29 @@
 
             const userDeg = parseInt(userDegInput);
             
-            // Phân tích loại
             let trueType = '';
             if (currentAngleDeg < 90) trueType = 'nhon';
             else if (currentAngleDeg === 90) trueType = 'vuong';
             else if (currentAngleDeg < 180) trueType = 'tu';
             else if (currentAngleDeg === 180) trueType = 'bet';
 
-            // Cho phép sai số 1 độ do đo bằng mắt thường có thể chênh lệch
             const diff = Math.abs(userDeg - currentAngleDeg);
             const wrongScaleDiff = Math.abs(userDeg - (180 - currentAngleDeg));
 
-            if (diff <= 1 && userType === trueType) {
-                showFeedback(`🎉 Xuất sắc! Đây chính xác là một ${getTypeName(trueType)} có số đo ${currentAngleDeg}°.`, "correct");
+            if (diff === 0 && userType === trueType) {
+                showFeedback(`🎉 Tuyệt vời! Kết quả chính xác 100%. Đây là một ${getTypeName(trueType)} có số đo ${currentAngleDeg}°.`, "correct");
+            }
+            else if (diff === 1 && userType === trueType) {
+                showFeedback(`🎉 Rất tốt! Em đo được ${userDeg}°, sai số chỉ 1° so với số đo chuẩn toán học là ${currentAngleDeg}°. Cố gắng căn thước chuẩn xác hơn chút nữa nhé!`, "correct");
             } 
             else if (diff <= 1 && userType !== trueType) {
-                showFeedback(`Gần chuẩn! Số đo ${userDeg}° là đúng, nhưng phân loại góc chưa chính xác. Hãy xem lại lý thuyết nhé.`, "warning");
+                showFeedback(`Gần chuẩn! Số đo ${userDeg}° là đúng, nhưng phân loại góc chưa chính xác.`, "warning");
             }
             else if (wrongScaleDiff <= 1) {
-                showFeedback(`Lưu ý nhé! Góc thực tế là ${currentAngleDeg}°. Bạn đang bị nhầm vòng cung số trên thước rồi, hãy chọn vòng cung bắt đầu từ vạch 0 nằm trên cạnh góc nhé!`, "incorrect");
+                showFeedback(`Lưu ý! Góc thực tế là ${currentAngleDeg}°. Bạn đang đọc nhầm vòng cung số trên thước. Nhớ nhìn vòng cung bắt đầu từ vạch 0 nằm trên cạnh góc.`, "incorrect");
             }
             else {
-                showFeedback(`Chưa chính xác. Số đo đúng là ${currentAngleDeg}°. Em thử bấm nút "Tự động đặt thước giúp em" để xem cách đặt thước chuẩn nhé!`, "incorrect");
+                showFeedback(`Chưa chính xác. Số đo đúng là ${currentAngleDeg}°. Em bấm nút "Tự động đặt thước giúp em" để xem cách đặt thước chuẩn nhé!`, "incorrect");
             }
         });
 
@@ -504,7 +628,6 @@
             }
         }
 
-        // Khởi chạy ban đầu với góc chẵn
         buildProtractor();
         generateRandomAngle('chan');
     </script>
