@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ứng dụng Học Đo Góc</title>
+    <!-- Nhúng file CSS sẽ tạo ở bước tiếp theo -->
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Thực Hành Đo Góc</h1>
+            <p>Kéo tâm thước vào đỉnh góc và xoay thước để một cạnh đi qua vạch 0 nhé!</p>
+        </header>
+
+        <main class="app-layout">
+            <!-- Khu vực tương tác: Chứa góc được vẽ bằng SVG và thước đo -->
+            <section class="workspace" id="workspace">
+                <div id="angle-container">
+                    <!-- SVG sẽ được dùng để vẽ tia Ox, Oy và đỉnh O qua JS -->
+                    <svg id="angle-svg" width="100%" height="100%"></svg>
+                </div>
+                
+                <!-- Thước đo góc (Protractor) có thể kéo thả và xoay -->
+                <div id="protractor" class="protractor">
+                    <!-- Sử dụng ảnh SVG thước đo góc trong suốt mã nguồn mở từ Wikimedia -->
+                    <img src="https://upload.wikimedia.org/wikipedia/commons/e/e0/Protractor_1.svg" alt="Thước đo góc" draggable="false" id="protractor-img">
+                    <div class="protractor-center" id="protractor-center"></div> <!-- Điểm tâm thước (dấu thập) -->
+                    <div class="rotate-handle" id="rotate-handle">
+                        <span>↻ Xoay</span>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Khu vực bảng điều khiển và trả lời -->
+            <section class="controls panel">
+                <button id="btn-new-angle" class="btn primary">Tạo góc mới ngẫu nhiên</button>
+
+                <div class="question-group">
+                    <label for="input-degree">1. Góc này có số đo là bao nhiêu?</label>
+                    <div class="input-wrapper">
+                        <input type="number" id="input-degree" min="0" max="180" placeholder="Nhập số đo (VD: 60)">
+                        <span class="unit">độ (°)</span>
+                    </div>
+                </div>
+
+                <div class="question-group">
+                    <label for="select-type">2. Dựa vào số đo, đây là loại góc gì?</label>
+                    <select id="select-type">
+                        <option value="">-- Chọn loại góc --</option>
+                        <option value="nhon">Góc nhọn (< 90°)</option>
+                        <option value="vuong">Góc vuông (= 90°)</option>
+                        <option value="tu">Góc tù (> 90° và < 180°)</option>
+                        <option value="bet">Góc bẹt (= 180°)</option>
+                    </select>
+                </div>
+
+                <button id="btn-check" class="btn success">Kiểm tra kết quả</button>
+
+                <!-- Vùng hiển thị thông báo đúng/sai và nhắc nhở -->
+                <div id="feedback-message" class="feedback hidden">
+                    <!-- Text sẽ được JS chèn vào đây -->
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- Nhúng file Logic JS sẽ tạo ở bước cuối cùng -->
+    <script src="logic.js"></script>
+</body>
+</html>

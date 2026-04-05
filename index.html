@@ -1,0 +1,512 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Thực Hành Đo Góc</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap');
+        body {
+            font-family: 'Nunito', sans-serif;
+            background-color: #f0fdf4; 
+            touch-action: none; 
+        }
+        
+        .workspace {
+            position: relative;
+            width: 100%;
+            /* Tăng chiều cao lên 650px để khu vực vẽ góc rộng rãi hơn */
+            height: 650px;
+            background-color: #ffffff;
+            background-image: radial-gradient(#e5e7eb 1px, transparent 1px);
+            background-size: 20px 20px; 
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.06);
+            border: 2px solid #d1d5db;
+        }
+
+        #angle-layer {
+            position: absolute;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            z-index: 1;
+        }
+
+        /* Thước đo góc */
+        #protractor-wrapper {
+            position: absolute;
+            z-index: 10;
+            /* Đặt tâm xoay chính xác vào tâm của thước (210, 210) */
+            transform-origin: 210px 210px; 
+            cursor: grab;
+            filter: drop-shadow(0 10px 15px rgba(0,0,0,0.2));
+        }
+
+        /* Hiệu ứng bay mượt khi bấm Tự động đặt thước */
+        .auto-move {
+            transition: all 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+
+        #protractor-wrapper:active {
+            cursor: grabbing;
+            filter: drop-shadow(0 5px 5px rgba(0,0,0,0.3));
+        }
+
+        .rotate-handle {
+            position: absolute;
+            top: -40px;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: #3b82f6;
+            color: white;
+            padding: 6px 16px;
+            border-radius: 999px;
+            font-size: 14px;
+            font-weight: bold;
+            cursor: ew-resize;
+            box-shadow: 0 4px 6px rgba(59, 130, 246, 0.3);
+            user-select: none;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            border: 2px solid white;
+        }
+
+        .rotate-handle:active {
+            background-color: #2563eb;
+        }
+
+        .snap-effect {
+            animation: snapPulse 0.4s ease-out;
+        }
+
+        @keyframes snapPulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); filter: brightness(1.2); }
+            100% { transform: scale(1); }
+        }
+
+        .feedback-pop {
+            animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        @keyframes popIn {
+            from { opacity: 0; transform: translateY(20px) scale(0.9); }
+            to { opacity: 1; transform: translateY(0) scale(1); }
+        }
+    </style>
+</head>
+<body class="text-gray-800 p-4 md:p-8">
+
+    <div class="max-w-7xl mx-auto">
+        <header class="text-center mb-6">
+            <h1 class="text-3xl md:text-4xl font-extrabold text-green-700 mb-2">📐 Thực Hành Đo Góc</h1>
+            <p class="text-lg text-gray-600">Kéo tâm thước vào đỉnh góc và xoay thước để một cạnh đi qua vạch 0 nhé!</p>
+        </header>
+
+        <div class="flex flex-col lg:flex-row gap-6">
+            <!-- Khu vực thực hành -->
+            <div class="flex-[2] workspace relative" id="workspace">
+                <!-- Công cụ bí mật của Giáo viên: Đã làm rõ hơn ở góc dưới phải -->
+                <div class="absolute bottom-2 right-2 opacity-60 hover:opacity-100 transition-opacity z-50 bg-white/70 px-2 py-1 rounded shadow-sm">
+                    <select id="teacher-mode" class="bg-transparent text-xs font-mono text-gray-600 font-bold border-none outline-none cursor-pointer" title="Cài đặt góc (Chỉ GV)">
+                        <option value="random">v1.0.0 (Ngẫu nhiên)</option>
+                        <option value="nhon">v1.0.1 (Ép Góc Nhọn)</option>
+                        <option value="vuong">v1.0.2 (Ép Góc Vuông)</option>
+                        <option value="tu">v1.0.3 (Ép Góc Tù)</option>
+                        <option value="bet">v1.0.4 (Ép Góc Bẹt)</option>
+                    </select>
+                </div>
+
+                <svg id="angle-layer"></svg>
+
+                <div id="protractor-wrapper" style="left: 50px; top: 50px; width: 420px; height: 230px; transform: rotate(0deg);">
+                    <div class="rotate-handle" id="rotate-handle">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+                        Xoay Thước
+                    </div>
+                    <div id="protractor-svg-container"></div>
+                </div>
+            </div>
+
+            <!-- Bảng câu hỏi -->
+            <div class="flex-[1] bg-white p-6 rounded-xl border-2 border-gray-200 shadow-sm flex flex-col justify-between">
+                <div>
+                    <!-- 2 Nút Tạo Góc: Chẵn và Lẻ -->
+                    <div class="flex gap-2 mb-3">
+                        <button id="btn-new-chan" class="flex-1 bg-blue-500 hover:bg-blue-600 text-white font-bold py-3 px-2 rounded-lg transition shadow-md text-sm flex items-center justify-center gap-1">
+                            ✨ Góc Chẵn
+                        </button>
+                        <button id="btn-new-le" class="flex-1 bg-purple-500 hover:bg-purple-600 text-white font-bold py-3 px-2 rounded-lg transition shadow-md text-sm flex items-center justify-center gap-1">
+                            🎲 Góc Lẻ
+                        </button>
+                    </div>
+                    
+                    <!-- Nút cứu trợ -->
+                    <button id="btn-hint" class="w-full bg-yellow-400 hover:bg-yellow-500 text-yellow-900 font-bold py-2 px-4 rounded-lg mb-6 transition shadow-md flex items-center justify-center gap-2 text-sm border border-yellow-500">
+                        💡 Tự động đặt thước giúp em
+                    </button>
+
+                    <div class="space-y-5">
+                        <div>
+                            <label class="block font-bold text-gray-700 mb-2">1. Góc này có số đo là bao nhiêu?</label>
+                            <div class="flex items-center gap-3">
+                                <input type="number" id="input-deg" min="0" max="180" class="w-full border-2 border-gray-300 rounded-lg p-3 text-lg font-bold text-center focus:border-blue-500 focus:outline-none" placeholder="VD: 60">
+                                <span class="text-xl font-bold text-gray-500">độ (°)</span>
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="block font-bold text-gray-700 mb-2">2. Dựa vào số đo, đây là loại góc gì?</label>
+                            <select id="select-type" class="w-full border-2 border-gray-300 rounded-lg p-3 text-lg font-semibold focus:border-blue-500 focus:outline-none bg-white">
+                                <option value="">-- Chọn loại góc --</option>
+                                <option value="nhon">Góc nhọn (< 90°)</option>
+                                <option value="vuong">Góc vuông (= 90°)</option>
+                                <option value="tu">Góc tù (> 90° và < 180°)</option>
+                                <option value="bet">Góc bẹt (= 180°)</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mt-8">
+                    <button id="btn-check" class="w-full bg-green-500 hover:bg-green-600 text-white font-bold py-3 px-4 rounded-lg transition shadow-md text-lg">
+                        Kiểm Tra Kết Quả
+                    </button>
+
+                    <div id="feedback" class="mt-4 p-4 rounded-lg font-bold text-center hidden">
+                        <!-- Thông báo hiện ở đây -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ==========================================
+        // 1. TẠO THƯỚC ĐO GÓC BẰNG SVG
+        // ==========================================
+        function buildProtractor() {
+            let svg = `<svg viewBox="-210 -210 420 230" style="width: 100%; height: 100%; overflow: visible;">`;
+            
+            svg += `<path d="M -200 0 A 200 200 0 0 1 200 0 Z" fill="rgba(240, 249, 255, 0.85)" stroke="#0ea5e9" stroke-width="2" />`;
+            svg += `<path d="M -110 0 A 110 110 0 0 1 110 0 Z" fill="rgba(255, 255, 255, 0.4)" stroke="#0ea5e9" stroke-width="1" />`;
+
+            for (let i = 0; i <= 180; i++) {
+                let theta = (180 - i) * Math.PI / 180;
+                let isMajor = i % 10 === 0;
+                let isMedium = i % 5 === 0 && !isMajor;
+
+                let outerR = 200;
+                let innerR = isMajor ? 180 : (isMedium ? 188 : 193);
+
+                let x1 = outerR * Math.cos(theta);
+                let y1 = -outerR * Math.sin(theta);
+                let x2 = innerR * Math.cos(theta);
+                let y2 = -innerR * Math.sin(theta);
+
+                svg += `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="#334155" stroke-width="${isMajor ? 2 : 1}" />`;
+
+                if (isMajor) {
+                    let lx1 = 168 * Math.cos(theta);
+                    let ly1 = -168 * Math.sin(theta);
+                    svg += `<text x="${lx1}" y="${ly1}" fill="#ef4444" font-size="12" font-weight="900" text-anchor="middle" dominant-baseline="central" transform="rotate(${i - 90}, ${lx1}, ${ly1})">${i}</text>`;
+
+                    let lx2 = 145 * Math.cos(theta);
+                    let ly2 = -145 * Math.sin(theta);
+                    svg += `<text x="${lx2}" y="${ly2}" fill="#0ea5e9" font-size="12" font-weight="900" text-anchor="middle" dominant-baseline="central" transform="rotate(${i - 90}, ${lx2}, ${ly2})">${180 - i}</text>`;
+                }
+            }
+
+            svg += `<line x1="-200" y1="0" x2="200" y2="0" stroke="#0ea5e9" stroke-width="2" />`;
+            svg += `<line x1="-15" y1="0" x2="15" y2="0" stroke="#ef4444" stroke-width="2" />`;
+            svg += `<line x1="0" y1="-15" x2="0" y2="15" stroke="#ef4444" stroke-width="2" />`;
+            svg += `<circle cx="0" cy="0" r="5" fill="#ef4444" />`;
+            svg += `<circle cx="0" cy="0" r="2" fill="#fff" />`;
+
+            svg += `</svg>`;
+            document.getElementById('protractor-svg-container').innerHTML = svg;
+        }
+
+        // ==========================================
+        // 2. LOGIC VẼ GÓC THEO MODE (CHẴN / LẺ)
+        // ==========================================
+        let currentAngleDeg = 0;
+        let currentVertex = { x: 0, y: 0 };
+        let baseLineAngle = 0;
+
+        function generateRandomAngle(mode = 'chan') {
+            const workspace = document.getElementById('workspace');
+            const svgLayer = document.getElementById('angle-layer');
+            
+            // Đỉnh ngẫu nhiên
+            currentVertex.x = workspace.clientWidth / 2 + (Math.random() * 140 - 70);
+            currentVertex.y = workspace.clientHeight / 2 + (Math.random() * 100 - 50);
+            
+            // Xoay hình ngẫu nhiên
+            baseLineAngle = Math.floor(Math.random() * 360);
+
+            // Đọc chế độ bí mật của Giáo viên
+            const teacherMode = document.getElementById('teacher-mode').value;
+
+            // Sinh góc theo mode Giáo viên yêu cầu
+            if (teacherMode === 'vuong') {
+                currentAngleDeg = 90;
+            } else if (teacherMode === 'bet') {
+                currentAngleDeg = 180;
+            } else if (teacherMode === 'nhon') {
+                if (mode === 'chan') {
+                    currentAngleDeg = Math.floor(Math.random() * 15 + 3) * 5; // 15 đến 85
+                } else {
+                    do { currentAngleDeg = Math.floor(Math.random() * 79) + 11; } while (currentAngleDeg % 5 === 0);
+                }
+            } else if (teacherMode === 'tu') {
+                if (mode === 'chan') {
+                    currentAngleDeg = Math.floor(Math.random() * 17 + 19) * 5; // 95 đến 175
+                } else {
+                    do { currentAngleDeg = Math.floor(Math.random() * 89) + 91; } while (currentAngleDeg % 5 === 0);
+                }
+            } else {
+                // Mặc định ngẫu nhiên (v1.0.0)
+                if (mode === 'chan') {
+                    currentAngleDeg = Math.floor(Math.random() * 33 + 3) * 5; 
+                } else {
+                    do {
+                        currentAngleDeg = Math.floor(Math.random() * 169) + 11;
+                    } while (currentAngleDeg % 5 === 0);
+                }
+            }
+
+            const length = 500; // Cạnh vẽ dài ra do màn hình đã lớn hơn
+            
+            let end1X = currentVertex.x + length * Math.cos(baseLineAngle * Math.PI / 180);
+            let end1Y = currentVertex.y + length * Math.sin(baseLineAngle * Math.PI / 180);
+
+            let angle2 = baseLineAngle - currentAngleDeg; 
+            let end2X = currentVertex.x + length * Math.cos(angle2 * Math.PI / 180);
+            let end2Y = currentVertex.y + length * Math.sin(angle2 * Math.PI / 180);
+
+            let arcRadius = 45;
+            let arcStartX = currentVertex.x + arcRadius * Math.cos(baseLineAngle * Math.PI / 180);
+            let arcStartY = currentVertex.y + arcRadius * Math.sin(baseLineAngle * Math.PI / 180);
+            let arcEndX = currentVertex.x + arcRadius * Math.cos(angle2 * Math.PI / 180);
+            let arcEndY = currentVertex.y + arcRadius * Math.sin(angle2 * Math.PI / 180);
+            let largeArcFlag = currentAngleDeg > 180 ? 1 : 0; 
+
+            svgLayer.innerHTML = `
+                <path d="M ${arcStartX} ${arcStartY} A ${arcRadius} ${arcRadius} 0 ${largeArcFlag} 0 ${arcEndX} ${arcEndY}" fill="rgba(234, 179, 8, 0.3)" stroke="#ca8a04" stroke-width="2" />
+                <line x1="${currentVertex.x}" y1="${currentVertex.y}" x2="${end1X}" y2="${end1Y}" stroke="#1e293b" stroke-width="4" stroke-linecap="round" />
+                <line x1="${currentVertex.x}" y1="${currentVertex.y}" x2="${end2X}" y2="${end2Y}" stroke="#1e293b" stroke-width="4" stroke-linecap="round" />
+                <circle cx="${currentVertex.x}" cy="${currentVertex.y}" r="6" fill="#ef4444" stroke="#fff" stroke-width="2" />
+            `;
+
+            document.getElementById('input-deg').value = '';
+            document.getElementById('select-type').value = '';
+            document.getElementById('feedback').className = 'hidden';
+        }
+
+        // ==========================================
+        // 3. LOGIC KÉO THẢ, HÚT VÀ NÚT GỢI Ý
+        // ==========================================
+        const protractor = document.getElementById('protractor-wrapper');
+        const rotateHandle = document.getElementById('rotate-handle');
+        
+        let isDragging = false;
+        let isRotating = false;
+        let startMouseX, startMouseY;
+        let startLeft, startTop, startRot;
+        let currentRot = 0; 
+
+        // Tính khoảng cách giữa 2 góc xoay
+        function getAngleDiff(a, b) {
+            let diff = (a - b) % 360;
+            while (diff <= -180) diff += 360;
+            while (diff > 180) diff -= 360;
+            return Math.abs(diff);
+        }
+
+        // --- Nút Tự động đặt thước ---
+        document.getElementById('btn-hint').addEventListener('click', () => {
+            protractor.classList.add('auto-move');
+            
+            // Di chuyển tâm thước vào đỉnh góc (Tâm thước cách viền trái và trên là 210px)
+            protractor.style.left = (currentVertex.x - 210) + 'px';
+            protractor.style.top = (currentVertex.y - 210) + 'px';
+            
+            // Xoay vạch 0 cho khớp với cạnh đáy
+            currentRot = baseLineAngle;
+            protractor.style.transform = `rotate(${currentRot}deg)`;
+
+            // Hết hiệu ứng bay thì bỏ class đi để có thể kéo thả bình thường
+            setTimeout(() => {
+                protractor.classList.remove('auto-move');
+            }, 600);
+        });
+
+        protractor.addEventListener('mousedown', (e) => {
+            if(e.target === rotateHandle || rotateHandle.contains(e.target)) return;
+            protractor.classList.remove('auto-move');
+            isDragging = true;
+            startMouseX = e.clientX;
+            startMouseY = e.clientY;
+            startLeft = parseFloat(protractor.style.left) || 0;
+            startTop = parseFloat(protractor.style.top) || 0;
+        });
+
+        rotateHandle.addEventListener('mousedown', (e) => {
+            e.stopPropagation();
+            protractor.classList.remove('auto-move');
+            isRotating = true;
+            
+            let rect = protractor.getBoundingClientRect();
+            let centerX = rect.left + rect.width / 2;
+            let centerY = rect.top + 210 * (rect.width / 420); 
+
+            startMouseX = centerX;
+            startMouseY = centerY;
+            
+            let dx = e.clientX - centerX;
+            let dy = e.clientY - centerY;
+            startRot = Math.atan2(dy, dx) * 180 / Math.PI - currentRot;
+        });
+
+        window.addEventListener('mousemove', (e) => {
+            if (isDragging) {
+                let dx = e.clientX - startMouseX;
+                let dy = e.clientY - startMouseY;
+                let newLeft = startLeft + dx;
+                let newTop = startTop + dy;
+                
+                // HÚT VÀO ĐỈNH
+                let protractorCenterX = newLeft + 210; 
+                let protractorCenterY = newTop + 210;
+
+                let dist = Math.sqrt(Math.pow(protractorCenterX - currentVertex.x, 2) + Math.pow(protractorCenterY - currentVertex.y, 2));
+                
+                if (dist < 30) { // Bán kính hút 30px
+                    newLeft = currentVertex.x - 210;
+                    newTop = currentVertex.y - 210;
+                }
+
+                protractor.style.left = newLeft + 'px';
+                protractor.style.top = newTop + 'px';
+            } 
+            else if (isRotating) {
+                let dx = e.clientX - startMouseX;
+                let dy = e.clientY - startMouseY;
+                let angle = Math.atan2(dy, dx) * 180 / Math.PI;
+                let rawRot = angle - startRot;
+
+                // HÚT VÀO CẠNH GÓC
+                let snapRot = rawRot;
+                let diff1 = getAngleDiff(rawRot, baseLineAngle);
+                if (diff1 < 5) snapRot = baseLineAngle;
+                
+                let angle2 = baseLineAngle - currentAngleDeg;
+                let diff2 = getAngleDiff(rawRot, angle2);
+                if (diff2 < 5) snapRot = angle2;
+
+                currentRot = snapRot;
+                protractor.style.transform = `rotate(${currentRot}deg)`;
+            }
+        });
+
+        window.addEventListener('mouseup', () => {
+            if(isDragging || isRotating) {
+                protractor.classList.remove('snap-effect');
+                void protractor.offsetWidth; 
+                protractor.classList.add('snap-effect');
+            }
+            isDragging = false;
+            isRotating = false;
+        });
+
+        protractor.addEventListener('touchstart', e => {
+            let touch = e.touches[0];
+            let mouseEvent = new MouseEvent("mousedown", { clientX: touch.clientX, clientY: touch.clientY });
+            if(e.target === rotateHandle || rotateHandle.contains(e.target)) rotateHandle.dispatchEvent(mouseEvent);
+            else protractor.dispatchEvent(mouseEvent);
+        }, {passive: false});
+
+        window.addEventListener('touchmove', e => {
+            if(isDragging || isRotating) e.preventDefault();
+            let touch = e.touches[0];
+            let mouseEvent = new MouseEvent("mousemove", { clientX: touch.clientX, clientY: touch.clientY });
+            window.dispatchEvent(mouseEvent);
+        }, {passive: false});
+
+        window.addEventListener('touchend', e => {
+            let mouseEvent = new MouseEvent("mouseup", {});
+            window.dispatchEvent(mouseEvent);
+        });
+
+        // ==========================================
+        // 4. KIỂM TRA ĐÁP ÁN
+        // ==========================================
+        document.getElementById('btn-new-chan').addEventListener('click', () => generateRandomAngle('chan'));
+        document.getElementById('btn-new-le').addEventListener('click', () => generateRandomAngle('le'));
+
+        document.getElementById('btn-check').addEventListener('click', () => {
+            const userDegInput = document.getElementById('input-deg').value;
+            const userType = document.getElementById('select-type').value;
+            const fbBox = document.getElementById('feedback');
+
+            if (userDegInput === '' || userType === '') {
+                showFeedback("Vui lòng điền đủ số đo và chọn loại góc nhé!", "warning");
+                return;
+            }
+
+            const userDeg = parseInt(userDegInput);
+            
+            // Phân tích loại
+            let trueType = '';
+            if (currentAngleDeg < 90) trueType = 'nhon';
+            else if (currentAngleDeg === 90) trueType = 'vuong';
+            else if (currentAngleDeg < 180) trueType = 'tu';
+            else if (currentAngleDeg === 180) trueType = 'bet';
+
+            // Cho phép sai số 1 độ do đo bằng mắt thường có thể chênh lệch
+            const diff = Math.abs(userDeg - currentAngleDeg);
+            const wrongScaleDiff = Math.abs(userDeg - (180 - currentAngleDeg));
+
+            if (diff <= 1 && userType === trueType) {
+                showFeedback(`🎉 Xuất sắc! Đây chính xác là một ${getTypeName(trueType)} có số đo ${currentAngleDeg}°.`, "correct");
+            } 
+            else if (diff <= 1 && userType !== trueType) {
+                showFeedback(`Gần chuẩn! Số đo ${userDeg}° là đúng, nhưng phân loại góc chưa chính xác. Hãy xem lại lý thuyết nhé.`, "warning");
+            }
+            else if (wrongScaleDiff <= 1) {
+                showFeedback(`Lưu ý nhé! Góc thực tế là ${currentAngleDeg}°. Bạn đang bị nhầm vòng cung số trên thước rồi, hãy chọn vòng cung bắt đầu từ vạch 0 nằm trên cạnh góc nhé!`, "incorrect");
+            }
+            else {
+                showFeedback(`Chưa chính xác. Số đo đúng là ${currentAngleDeg}°. Em thử bấm nút "Tự động đặt thước giúp em" để xem cách đặt thước chuẩn nhé!`, "incorrect");
+            }
+        });
+
+        function getTypeName(typeVal) {
+            const map = { 'nhon': 'Góc nhọn', 'vuong': 'Góc vuông', 'tu': 'Góc tù', 'bet': 'Góc bẹt' };
+            return map[typeVal];
+        }
+
+        function showFeedback(msg, type) {
+            const fbBox = document.getElementById('feedback');
+            fbBox.className = 'feedback-pop mt-4 p-4 rounded-lg font-bold text-center border-2';
+            fbBox.innerHTML = msg;
+            
+            if (type === 'correct') {
+                fbBox.classList.add('bg-green-100', 'text-green-800', 'border-green-300');
+            } else if (type === 'incorrect') {
+                fbBox.classList.add('bg-red-100', 'text-red-800', 'border-red-300');
+            } else {
+                fbBox.classList.add('bg-yellow-100', 'text-yellow-800', 'border-yellow-300');
+            }
+        }
+
+        // Khởi chạy ban đầu với góc chẵn
+        buildProtractor();
+        generateRandomAngle('chan');
+    </script>
+</body>
+</html>
